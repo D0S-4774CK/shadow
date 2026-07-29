@@ -1,0 +1,127 @@
+import React, { useState } from 'react';
+import { ShoppingCart, Edit3, Star, Image as ImageIcon } from 'lucide-react';
+
+export default function ProductCard({ product, onCustomize, onAddToCart }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  const displayPrice = product.formattedPrice || `₹${product.price}`;
+
+  return (
+    <div className="product-card">
+      {/* Top Image Holder featuring real product photos */}
+      <div
+        className="card-image-box"
+        style={{
+          backgroundColor: '#F3EFE6',
+          position: 'relative',
+          height: '200px',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Badge Overlay */}
+        {product.badge && (
+          <span
+            className="badge-neo"
+            style={{
+              position: 'absolute',
+              top: '10px',
+              left: '10px',
+              backgroundColor: '#FFFFFF',
+              zIndex: 3
+            }}
+          >
+            {product.badge}
+          </span>
+        )}
+
+        {/* Real Product Photography */}
+        {!imageError && product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageError(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform 0.3s ease',
+              opacity: imageLoaded ? 1 : 0.4
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: '#888'
+            }}
+          >
+            <ImageIcon size={36} />
+            <span style={{ fontSize: '0.8rem', marginTop: '4px' }}>Laser Wood Craft</span>
+          </div>
+        )}
+      </div>
+
+      {/* Card Content Details */}
+      <div className="card-content">
+        <div style={{ fontSize: '0.78rem', color: '#666', fontWeight: '600', marginBottom: '4px' }}>
+          {product.categoryLabel}
+        </div>
+
+        <h3 className="card-title" title={product.name} style={{ fontSize: '1.05rem', fontWeight: '700' }}>
+          {product.name}
+        </h3>
+
+        <div className="card-meta">
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <span className="card-price" style={{ fontSize: '1.25rem' }}>
+              {displayPrice}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: '700' }}>
+            <Star size={14} fill="#FFD166" color="#1a1a1a" />
+            <span>{product.rating}</span>
+          </div>
+        </div>
+
+        {/* Action Buttons matching screenshot */}
+        <div className="card-actions">
+          {product.isCustomizable ? (
+            <button
+              className="btn-neo btn-neo-pink"
+              style={{ flex: 1, fontSize: '0.85rem', padding: '8px 10px' }}
+              onClick={() => onCustomize(product)}
+            >
+              <Edit3 size={14} />
+              <span>Customize</span>
+            </button>
+          ) : (
+            <button
+              className="btn-neo btn-neo-yellow"
+              style={{ flex: 1, fontSize: '0.85rem', padding: '8px 10px' }}
+              onClick={() => onAddToCart(product)}
+            >
+              <ShoppingCart size={14} />
+              <span>Add</span>
+            </button>
+          )}
+
+          <button
+            className="btn-neo"
+            style={{ padding: '8px 10px', backgroundColor: '#FFFFFF' }}
+            onClick={() => onAddToCart(product)}
+            title="Quick Add to Cart"
+          >
+            <ShoppingCart size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
