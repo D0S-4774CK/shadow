@@ -8,8 +8,8 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
 
   if (!isOpen) return null;
 
-  // Secure Admin Passcode (hidden from website UI)
-  const ADMIN_PASSCODE = 'Shadow@2026';
+  // Reads Admin Passcode from Environment Variable or secure default
+  const ADMIN_PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'Shadow@2026';
 
   const handleSubmit = (e) => {
     e.preventDefault();
