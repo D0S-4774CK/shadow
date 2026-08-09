@@ -28,7 +28,6 @@ export default function ProductGrid({
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === 'price-low') return a.price - b.price;
     if (sortBy === 'price-high') return b.price - a.price;
-    if (sortBy === 'rating') return b.rating - a.rating;
     return 0;
   });
 
@@ -55,7 +54,6 @@ export default function ProductGrid({
             style={{ padding: '6px 12px', fontSize: '0.9rem' }}
           >
             <option value="featured">Featured First</option>
-            <option value="rating">Highest Rated ⭐</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
           </select>

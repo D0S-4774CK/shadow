@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Star, Image as ImageIcon } from 'lucide-react';
+import { ShoppingCart, Image as ImageIcon } from 'lucide-react';
 
 export default function ProductCard({ product, onAddToCart }) {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -77,16 +77,11 @@ export default function ProductCard({ product, onAddToCart }) {
           {product.name}
         </h3>
 
-        <div className="card-meta">
+        <div className="card-meta" style={{ marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span className="card-price" style={{ fontSize: '1.25rem' }}>
+            <span className="card-price" style={{ fontSize: '1.3rem', fontWeight: '800' }}>
               {displayPrice}
             </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: '700' }}>
-            <Star size={14} fill="#FFD166" color="#1a1a1a" />
-            <span>{product.rating}</span>
           </div>
         </div>
 
