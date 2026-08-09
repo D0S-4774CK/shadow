@@ -65,10 +65,16 @@ export const supabaseService = {
   // Fetch All Products from Supabase
   async getProducts(fallbackProducts) {
     const client = getSupabaseClient();
-    if (!client) return fallbackProducts;
+    if (!client) {
+      console.warn('Supabase client unconfigured on this device.');
+      return fallbackProducts;
+    }
     try {
       const { data, error } = await client.from('products').select('*');
-      if (error || !data || data.length === 0) return fallbackProducts;
+      if (error || !data || data.length === 0) {
+        console.warn('Supabase return notice:', error || 'No rows returned');
+        return fallbackProducts;
+      }
 
       return data.map((item) => ({
         ...item,
@@ -111,7 +117,7 @@ export const supabaseService = {
     }
   },
 
-  // Bulk Seed/Sync Catalog Products to Supabase with progressive multi-level column fallback
+  // Bulk Seed/Sync Catalog Products to Supabase
   async syncCatalogToSupabase(productsList, customClient = null) {
     const client = customClient || getSupabaseClient();
     if (!client) {
