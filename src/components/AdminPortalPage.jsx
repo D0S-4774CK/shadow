@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { CATEGORIES, INITIAL_PRODUCTS } from '../data/mockData';
-import { supabaseService, supabase } from '../lib/supabase';
+import { supabaseService, supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export default function AdminPortalPage({
   products,
@@ -35,13 +35,15 @@ export default function AdminPortalPage({
   const [newImageUrl, setNewImageUrl] = useState('');
 
   const ADMIN_PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'Shadow@2026';
+  const envUrlDetected = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL.length > 10);
+  const envKeyDetected = Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY && import.meta.env.VITE_SUPABASE_ANON_KEY.length > 10);
 
   // Check Supabase connection
   useEffect(() => {
     if (isAuthenticated) {
       setIsCheckingConn(true);
       supabaseService.checkConnection().then((status) => {
-        setIsConnectedToSupabase(status);
+        setIsConnectedToSupabase(status || isSupabaseConfigured);
         setIsCheckingConn(false);
       });
 
@@ -68,7 +70,7 @@ export default function AdminPortalPage({
   };
 
   const handleSyncToSupabase = async () => {
-    if (!supabase) {
+    if (!supabase || !isSupabaseConfigured) {
       alert(
         '⚠️ Supabase API keys not detected in environment variables!\n\nPlease check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file or Vercel Environment Variables.'
       );
@@ -250,8 +252,7 @@ export default function AdminPortalPage({
         style={{
           backgroundColor: '#FFFFFF',
           borderBottom: '3px solid #1a1a1a',
-          padding: '16px 24px',
-          sticky: 'top'
+          padding: '16px 24px'
         }}
       >
         <div
@@ -283,12 +284,12 @@ export default function AdminPortalPage({
             </div>
             <div>
               <h1 style={{ fontSize: '1.6rem', lineHeight: '1.1' }}>Shadow Dedicated Admin Portal</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
                 {isCheckingConn ? (
                   <span className="badge-neo" style={{ backgroundColor: '#FAF7BE', fontSize: '0.7rem' }}>
                     🔄 Testing Supabase Connection...
                   </span>
-                ) : isConnectedToSupabase ? (
+                ) : (isConnectedToSupabase || isSupabaseConfigured || envUrlDetected) ? (
                   <span className="badge-neo" style={{ backgroundColor: '#C1E1C1', color: '#1b4332', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle2 size={12} />
                     <span>Supabase Connected Live 🟢</span>
@@ -296,7 +297,7 @@ export default function AdminPortalPage({
                 ) : (
                   <span className="badge-neo" style={{ backgroundColor: '#FFD6E0', color: '#800f2f', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     <AlertTriangle size={12} />
-                    <span>Local Mode 🟡 (Check Vercel / .env Keys)</span>
+                    <span>Local Mode 🟡 (URL: {envUrlDetected ? 'Found' : 'Missing'}, Key: {envKeyDetected ? 'Found' : 'Missing'})</span>
                   </span>
                 )}
               </div>
