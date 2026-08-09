@@ -75,8 +75,8 @@ export const supabaseService = {
         categoryLabel: item.categoryLabel || item.categorylabel || item.category,
         formattedPrice: item.formattedPrice || item.formattedprice || `₹${item.price}`,
         imageUrl: item.imageUrl || item.imageurl || item.image_url,
-        isCustomizable: item.isCustomizable !== undefined ? item.isCustomizable : item.iscustomizable,
-        inStock: item.inStock !== undefined ? item.inStock : item.instock
+        isCustomizable: false,
+        inStock: item.inStock !== undefined ? item.inStock : (item.instock !== undefined ? item.instock : 20)
       }));
     } catch (err) {
       console.warn('Supabase fetch error, using local fallback:', err);
@@ -90,12 +90,13 @@ export const supabaseService = {
     if (!client) return newProduct;
     try {
       const formatted = {
-        ...newProduct,
-        categorylabel: newProduct.categoryLabel,
-        formattedprice: newProduct.formattedPrice,
+        id: newProduct.id,
+        name: newProduct.name,
+        category: newProduct.category,
+        price: newProduct.price,
+        description: newProduct.description || '',
         imageurl: newProduct.imageUrl,
-        iscustomizable: false,
-        instock: newProduct.inStock
+        imageUrl: newProduct.imageUrl
       };
 
       const { data, error } = await client
@@ -110,45 +111,62 @@ export const supabaseService = {
     }
   },
 
-  // Bulk Seed/Sync Catalog Products to Supabase
+  // Bulk Seed/Sync Catalog Products to Supabase with automatic column fallback
   async syncCatalogToSupabase(productsList, customClient = null) {
     const client = customClient || getSupabaseClient();
     if (!client) {
       console.error('Supabase client not initialized.');
       return { success: false, error: 'Supabase client not initialized.' };
     }
+
+    // 1. Primary full schema format
+    const fullSchemaList = productsList.map((p) => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      categoryLabel: p.categoryLabel,
+      categorylabel: p.categoryLabel,
+      price: p.price,
+      formattedPrice: p.formattedPrice || `₹${p.price}`,
+      formattedprice: p.formattedPrice || `₹${p.price}`,
+      rating: p.rating || 5.0,
+      reviewsCount: p.reviewsCount || 10,
+      badge: p.badge || 'Popular',
+      isCustomizable: false,
+      description: p.description || '',
+      imageUrl: p.imageUrl,
+      imageurl: p.imageUrl,
+      inStock: p.inStock || 20
+    }));
+
     try {
-      const formattedList = productsList.map((p) => ({
+      const { error: fullErr } = await client.from('products').upsert(fullSchemaList, { onConflict: 'id' });
+      if (!fullErr) {
+        return { success: true };
+      }
+
+      console.warn('Full schema upsert notice, trying streamlined payload fallback:', fullErr);
+
+      // 2. Streamlined payload fallback (compatible with basic table definitions)
+      const cleanPayload = productsList.map((p) => ({
         id: p.id,
         name: p.name,
         category: p.category,
-        categoryLabel: p.categoryLabel,
-        categorylabel: p.categoryLabel,
         price: p.price,
-        formattedPrice: p.formattedPrice || `₹${p.price}`,
-        formattedprice: p.formattedPrice || `₹${p.price}`,
-        rating: p.rating || 5.0,
-        reviewsCount: p.reviewsCount || 10,
-        reviewscount: p.reviewsCount || 10,
-        badge: p.badge || 'Popular',
-        isCustomizable: false,
-        iscustomizable: false,
         description: p.description || '',
         imageUrl: p.imageUrl,
-        imageurl: p.imageUrl,
-        inStock: p.inStock || 20,
-        instock: p.inStock || 20
+        imageurl: p.imageUrl
       }));
 
-      const { error } = await client.from('products').upsert(formattedList, { onConflict: 'id' });
-      if (error) {
-        console.error('Error syncing products to Supabase:', error);
-        return { success: false, error: error.message || JSON.stringify(error) };
+      const { error: cleanErr } = await client.from('products').upsert(cleanPayload, { onConflict: 'id' });
+      if (!cleanErr) {
+        return { success: true };
       }
-      return { success: true };
+
+      return { success: false, error: cleanErr.message || fullErr.message };
     } catch (err) {
-      console.error('Sync error:', err);
-      return { success: false, error: err.message || 'Unknown network error' };
+      console.error('Sync exception:', err);
+      return { success: false, error: err.message || 'Network exception' };
     }
   },
 
