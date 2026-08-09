@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables for Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Environment variables for Supabase (with trimming for clean URL parsing)
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+const supabaseUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
+const supabaseAnonKey = rawKey.trim().replace(/^["']|["']$/g, '');
 
 // Check if Supabase credentials are configured
 export const isSupabaseConfigured = Boolean(
@@ -17,7 +20,7 @@ export const isSupabaseConfigured = Boolean(
 // Initialize Supabase Client (or null if unconfigured)
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
-  : (supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null);
+  : null;
 
 /**
  * Helper data service layer:
@@ -26,18 +29,22 @@ export const supabase = isSupabaseConfigured
 export const supabaseService = {
   // Test live connection status
   async checkConnection() {
-    if (!supabase) return false;
+    if (!supabase || !isSupabaseConfigured) return false;
     try {
       const { data, error } = await supabase.from('products').select('id').limit(1);
+      if (error) {
+        console.warn('Supabase test query warning:', error.message || error);
+      }
       return !error;
     } catch (err) {
+      console.warn('Supabase connection test exception:', err);
       return false;
     }
   },
 
   // Fetch All Products from Supabase
   async getProducts(fallbackProducts) {
-    if (!supabase) return fallbackProducts;
+    if (!supabase || !isSupabaseConfigured) return fallbackProducts;
     try {
       const { data, error } = await supabase.from('products').select('*');
       if (error || !data || data.length === 0) return fallbackProducts;
@@ -58,7 +65,7 @@ export const supabaseService = {
 
   // Insert New Product into Supabase
   async addProduct(newProduct) {
-    if (!supabase) return newProduct;
+    if (!supabase || !isSupabaseConfigured) return newProduct;
     try {
       const formatted = {
         ...newProduct,
@@ -83,7 +90,7 @@ export const supabaseService = {
 
   // Bulk Seed/Sync Catalog Products to Supabase
   async syncCatalogToSupabase(productsList) {
-    if (!supabase) {
+    if (!supabase || !isSupabaseConfigured) {
       console.error('Supabase client not initialized.');
       return false;
     }
@@ -124,7 +131,7 @@ export const supabaseService = {
 
   // Delete Product from Supabase
   async deleteProduct(productId) {
-    if (!supabase) return true;
+    if (!supabase || !isSupabaseConfigured) return true;
     try {
       const { error } = await supabase
         .from('products')
@@ -141,25 +148,9 @@ export const supabaseService = {
     }
   },
 
-  // Submit Laser Quote
-  async submitQuote(newQuote) {
-    if (!supabase) return newQuote;
-    try {
-      const { data, error } = await supabase
-        .from('quotes')
-        .insert([newQuote])
-        .select();
-      if (error) console.error('Error submitting quote to Supabase:', error);
-      return data ? data[0] : newQuote;
-    } catch (err) {
-      console.error('Supabase quote submit error:', err);
-      return newQuote;
-    }
-  },
-
-  // Create Order in Supabase (Handling schema columns gracefully)
+  // Create Order in Supabase
   async createOrder(orderData) {
-    if (!supabase) return orderData;
+    if (!supabase || !isSupabaseConfigured) return orderData;
     try {
       const payload = {
         id: orderData.id,
@@ -180,7 +171,6 @@ export const supabaseService = {
 
       if (error) {
         console.warn('Primary order insert notice (attempting fallback columns):', error);
-        // Fallback to essential columns if new columns are not yet created in Supabase table
         const fallbackPayload = {
           id: orderData.id,
           customer_email: `${orderData.customer_name || 'Customer'} | ${orderData.customer_phone || ''} | ${orderData.customer_email || ''}`,
@@ -199,7 +189,7 @@ export const supabaseService = {
 
   // Fetch Orders from Supabase
   async getOrders(fallbackOrders = []) {
-    if (!supabase) return fallbackOrders;
+    if (!supabase || !isSupabaseConfigured) return fallbackOrders;
     try {
       const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       if (error || !data) return fallbackOrders;
