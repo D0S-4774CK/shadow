@@ -1,26 +1,41 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables for Supabase (with clean trimming)
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Environment variables or localStorage override for Supabase
+const getSupabaseConfig = () => {
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim().replace(/^["']|["']$/g, '');
+  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim().replace(/^["']|["']$/g, '');
 
-const supabaseUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
-const supabaseAnonKey = rawKey.trim().replace(/^["']|["']$/g, '');
+  const localUrl = (localStorage.getItem('shadow_supabase_url') || '').trim();
+  const localKey = (localStorage.getItem('shadow_supabase_key') || '').trim();
 
-// Check if Supabase credentials are configured
-export const isSupabaseConfigured = Boolean(
-  supabaseUrl &&
-  supabaseUrl.length > 10 &&
-  !supabaseUrl.includes('your-supabase-project-id') &&
-  supabaseAnonKey &&
-  supabaseAnonKey.length > 10 &&
-  supabaseAnonKey !== 'your-supabase-anon-key-here'
-);
+  const url = localUrl || envUrl;
+  const key = localKey || envKey;
 
-// Initialize Supabase Client (or null if unconfigured)
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+  const isConfigured = Boolean(
+    url &&
+    url.length > 10 &&
+    !url.includes('your-supabase-project-id') &&
+    key &&
+    key.length > 10 &&
+    key !== 'your-supabase-anon-key-here'
+  );
+
+  return { url, key, isConfigured };
+};
+
+const config = getSupabaseConfig();
+
+export const isSupabaseConfigured = config.isConfigured;
+
+export const getSupabaseClient = () => {
+  const current = getSupabaseConfig();
+  if (current.isConfigured) {
+    return createClient(current.url, current.key);
+  }
+  return null;
+};
+
+export const supabase = getSupabaseClient();
 
 /**
  * Helper data service layer:
@@ -29,25 +44,30 @@ export const supabase = isSupabaseConfigured
 export const supabaseService = {
   // Test connection status
   async checkConnection() {
-    if (!isSupabaseConfigured || !supabase) return false;
+    const client = getSupabaseClient();
+    if (!client) return false;
     try {
-      const { data, error } = await supabase.from('products').select('id').limit(1);
-      if (error) {
-        console.warn('Supabase query notice:', error);
-      }
-      // If client is initialized with valid credentials, return true
-      return true;
+      const { data, error } = await client.from('products').select('id').limit(1);
+      if (error) console.warn('Supabase connection notice:', error.message || error);
+      return !error;
     } catch (err) {
       console.warn('Supabase connection test exception:', err);
-      return isSupabaseConfigured;
+      return false;
     }
+  },
+
+  // Save custom Supabase credentials
+  saveCredentials(url, key) {
+    localStorage.setItem('shadow_supabase_url', url.trim());
+    localStorage.setItem('shadow_supabase_key', key.trim());
   },
 
   // Fetch All Products from Supabase
   async getProducts(fallbackProducts) {
-    if (!supabase || !isSupabaseConfigured) return fallbackProducts;
+    const client = getSupabaseClient();
+    if (!client) return fallbackProducts;
     try {
-      const { data, error } = await supabase.from('products').select('*');
+      const { data, error } = await client.from('products').select('*');
       if (error || !data || data.length === 0) return fallbackProducts;
 
       return data.map((item) => ({
@@ -66,7 +86,8 @@ export const supabaseService = {
 
   // Insert New Product into Supabase
   async addProduct(newProduct) {
-    if (!supabase || !isSupabaseConfigured) return newProduct;
+    const client = getSupabaseClient();
+    if (!client) return newProduct;
     try {
       const formatted = {
         ...newProduct,
@@ -77,7 +98,7 @@ export const supabaseService = {
         instock: newProduct.inStock
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('products')
         .insert([formatted])
         .select();
@@ -90,8 +111,9 @@ export const supabaseService = {
   },
 
   // Bulk Seed/Sync Catalog Products to Supabase
-  async syncCatalogToSupabase(productsList) {
-    if (!supabase || !isSupabaseConfigured) {
+  async syncCatalogToSupabase(productsList, customClient = null) {
+    const client = customClient || getSupabaseClient();
+    if (!client) {
       console.error('Supabase client not initialized.');
       return false;
     }
@@ -109,8 +131,8 @@ export const supabaseService = {
         reviewsCount: p.reviewsCount || 10,
         reviewscount: p.reviewsCount || 10,
         badge: p.badge || 'Popular',
-        isCustomizable: p.isCustomizable ?? true,
-        iscustomizable: p.isCustomizable ?? true,
+        isCustomizable: false,
+        iscustomizable: false,
         description: p.description || '',
         imageUrl: p.imageUrl,
         imageurl: p.imageUrl,
@@ -118,7 +140,7 @@ export const supabaseService = {
         instock: p.inStock || 20
       }));
 
-      const { error } = await supabase.from('products').upsert(formattedList, { onConflict: 'id' });
+      const { error } = await client.from('products').upsert(formattedList, { onConflict: 'id' });
       if (error) {
         console.error('Error syncing products to Supabase:', error);
         return false;
@@ -132,9 +154,10 @@ export const supabaseService = {
 
   // Delete Product from Supabase
   async deleteProduct(productId) {
-    if (!supabase || !isSupabaseConfigured) return true;
+    const client = getSupabaseClient();
+    if (!client) return true;
     try {
-      const { error } = await supabase
+      const { error } = await client
         .from('products')
         .delete()
         .eq('id', productId);
@@ -151,7 +174,8 @@ export const supabaseService = {
 
   // Create Order in Supabase
   async createOrder(orderData) {
-    if (!supabase || !isSupabaseConfigured) return orderData;
+    const client = getSupabaseClient();
+    if (!client) return orderData;
     try {
       const payload = {
         id: orderData.id,
@@ -165,7 +189,7 @@ export const supabaseService = {
         created_at: orderData.created_at || new Date().toISOString()
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('orders')
         .insert([payload])
         .select();
@@ -179,7 +203,7 @@ export const supabaseService = {
           items: orderData.items,
           status: orderData.status || 'Processing'
         };
-        await supabase.from('orders').insert([fallbackPayload]);
+        await client.from('orders').insert([fallbackPayload]);
       }
       return data ? data[0] : orderData;
     } catch (err) {
@@ -190,9 +214,10 @@ export const supabaseService = {
 
   // Fetch Orders from Supabase
   async getOrders(fallbackOrders = []) {
-    if (!supabase || !isSupabaseConfigured) return fallbackOrders;
+    const client = getSupabaseClient();
+    if (!client) return fallbackOrders;
     try {
-      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      const { data, error } = await client.from('orders').select('*').order('created_at', { ascending: false });
       if (error || !data) return fallbackOrders;
       return data;
     } catch (err) {

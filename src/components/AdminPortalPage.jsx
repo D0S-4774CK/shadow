@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink, Settings, Database, X } from 'lucide-react';
 import { CATEGORIES, INITIAL_PRODUCTS } from '../data/mockData';
-import { supabaseService, supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabaseService, getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export default function AdminPortalPage({
   products,
@@ -21,6 +22,11 @@ export default function AdminPortalPage({
 
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'orders'
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+
+  const [inputUrl, setInputUrl] = useState(() => localStorage.getItem('shadow_supabase_url') || import.meta.env.VITE_SUPABASE_URL || '');
+  const [inputKey, setInputKey] = useState(() => localStorage.getItem('shadow_supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || '');
+
   const [isConnectedToSupabase, setIsConnectedToSupabase] = useState(false);
   const [isCheckingConn, setIsCheckingConn] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -35,17 +41,18 @@ export default function AdminPortalPage({
   const [newImageUrl, setNewImageUrl] = useState('');
 
   const ADMIN_PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'Shadow@2026';
-  const envUrlDetected = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL.length > 10);
-  const envKeyDetected = Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY && import.meta.env.VITE_SUPABASE_ANON_KEY.length > 10);
 
   // Check Supabase connection
+  const runConnectionCheck = async () => {
+    setIsCheckingConn(true);
+    const status = await supabaseService.checkConnection();
+    setIsConnectedToSupabase(status);
+    setIsCheckingConn(false);
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
-      setIsCheckingConn(true);
-      supabaseService.checkConnection().then((status) => {
-        setIsConnectedToSupabase(status || isSupabaseConfigured);
-        setIsCheckingConn(false);
-      });
+      runConnectionCheck();
 
       supabaseService.getOrders(orders).then((fetchedOrders) => {
         if (fetchedOrders) setLiveOrders(fetchedOrders);
@@ -69,16 +76,26 @@ export default function AdminPortalPage({
     sessionStorage.removeItem('shadow_admin_auth');
   };
 
+  const handleSaveCredentialsSubmit = async (e) => {
+    e.preventDefault();
+    if (!inputUrl || !inputKey) return;
+
+    supabaseService.saveCredentials(inputUrl, inputKey);
+    setShowKeyModal(false);
+    await runConnectionCheck();
+    alert('🎉 Supabase Credentials saved! Syncing catalog products now...');
+    handleSyncToSupabase();
+  };
+
   const handleSyncToSupabase = async () => {
-    if (!supabase || !isSupabaseConfigured) {
-      alert(
-        '⚠️ Supabase API keys not detected in environment variables!\n\nPlease check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file or Vercel Environment Variables.'
-      );
+    const client = getSupabaseClient();
+    if (!client) {
+      setShowKeyModal(true);
       return;
     }
 
     setIsSyncing(true);
-    const success = await supabaseService.syncCatalogToSupabase(INITIAL_PRODUCTS);
+    const success = await supabaseService.syncCatalogToSupabase(INITIAL_PRODUCTS, client);
     setIsSyncing(false);
 
     if (success) {
@@ -107,7 +124,7 @@ export default function AdminPortalPage({
       rating: 5.0,
       reviewsCount: 1,
       badge: newBadge,
-      isCustomizable: true,
+      isCustomizable: false,
       description: 'Handcrafted laser-cut wooden product added via Admin Portal.',
       imageUrl: newImageUrl || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
       inStock: Number(newStock)
@@ -289,22 +306,36 @@ export default function AdminPortalPage({
                   <span className="badge-neo" style={{ backgroundColor: '#FAF7BE', fontSize: '0.7rem' }}>
                     🔄 Testing Supabase Connection...
                   </span>
-                ) : (isConnectedToSupabase || isSupabaseConfigured || envUrlDetected) ? (
+                ) : isConnectedToSupabase ? (
                   <span className="badge-neo" style={{ backgroundColor: '#C1E1C1', color: '#1b4332', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle2 size={12} />
                     <span>Supabase Connected Live 🟢</span>
                   </span>
                 ) : (
-                  <span className="badge-neo" style={{ backgroundColor: '#FFD6E0', color: '#800f2f', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <button
+                    className="badge-neo"
+                    style={{ backgroundColor: '#FFD6E0', color: '#800f2f', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: '1px solid #1a1a1a' }}
+                    onClick={() => setShowKeyModal(true)}
+                  >
                     <AlertTriangle size={12} />
-                    <span>Local Mode 🟡 (URL: {envUrlDetected ? 'Found' : 'Missing'}, Key: {envKeyDetected ? 'Found' : 'Missing'})</span>
-                  </span>
+                    <span>Supabase Setup Required ⚙️ (Click to Enter Keys)</span>
+                  </button>
                 )}
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              className="btn-neo"
+              style={{ fontSize: '0.85rem', backgroundColor: '#FFFFFF' }}
+              onClick={() => setShowKeyModal(true)}
+              title="Configure Supabase Project URL & Anon Key"
+            >
+              <Database size={16} />
+              <span>Database Settings</span>
+            </button>
+
             <button
               className="btn-neo btn-neo-yellow"
               style={{ fontSize: '0.85rem' }}
@@ -628,7 +659,7 @@ export default function AdminPortalPage({
                       {Array.isArray(ord.items) ? (
                         ord.items.map((item, idx) => (
                           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', margin: '4px 0' }}>
-                            <span>• {item.name} × {item.quantity} {item.customization ? `(Engraving: "${item.customization.engravedText}")` : ''}</span>
+                            <span>• {item.name} × {item.quantity}</span>
                             <strong>₹{item.price * item.quantity}</strong>
                           </div>
                         ))
@@ -643,6 +674,75 @@ export default function AdminPortalPage({
           </div>
         )}
       </main>
+
+      {/* Supabase Key Setup Modal */}
+      {showKeyModal && (
+        <div className="modal-overlay" onClick={() => setShowKeyModal(false)}>
+          <div
+            className="modal-card"
+            style={{ maxWidth: '540px', backgroundColor: '#FFFDF0' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className="btn-neo modal-close-btn" onClick={() => setShowKeyModal(false)}>
+              <X size={18} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#C1E1C1',
+                  border: '2px solid #1a1a1a',
+                  boxShadow: '3px 3px 0px #1a1a1a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px'
+                }}
+              >
+                <Database size={28} color="#1a1a1a" />
+              </div>
+              <h2 style={{ fontSize: '1.4rem' }}>Connect Supabase Database</h2>
+              <p style={{ fontSize: '0.85rem', color: '#555' }}>
+                Paste your Supabase Project URL & Anon Key from your Supabase Dashboard to sync instantly!
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveCredentialsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Supabase Project URL</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://xyzabcdef.supabase.co"
+                  value={inputUrl}
+                  onChange={(e) => setInputUrl(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Supabase Anon Key</label>
+                <textarea
+                  className="form-textarea"
+                  rows={3}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={inputKey}
+                  onChange={(e) => setInputKey(e.target.value)}
+                  required
+                />
+              </div>
+
+              <button type="submit" className="btn-neo btn-neo-pink" style={{ padding: '12px', marginTop: '6px' }}>
+                <RefreshCw size={18} />
+                <span>Save Credentials & Sync Products Now</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
