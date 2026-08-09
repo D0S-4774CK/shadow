@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink, Settings, Database, X } from 'lucide-react';
-import { CATEGORIES, INITIAL_PRODUCTS } from '../data/mockData';
+import { CATEGORIES } from '../data/mockData';
 import { supabaseService, getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 
 export default function AdminPortalPage({
@@ -82,10 +82,11 @@ export default function AdminPortalPage({
     supabaseService.saveCredentials(inputUrl, inputKey);
     setShowKeyModal(false);
     await runConnectionCheck();
-    alert('🎉 Supabase Credentials saved! Syncing catalog products now...');
+    alert('🎉 Supabase Credentials saved! Syncing your custom products now...');
     handleSyncToSupabase();
   };
 
+  // Sync CURRENT live products list to Supabase (NOT initial mock data)
   const handleSyncToSupabase = async () => {
     const client = getSupabaseClient();
     if (!client) {
@@ -94,16 +95,15 @@ export default function AdminPortalPage({
     }
 
     setIsSyncing(true);
-    const res = await supabaseService.syncCatalogToSupabase(INITIAL_PRODUCTS, client);
+    const res = await supabaseService.syncCatalogToSupabase(products, client);
     setIsSyncing(false);
 
     if (res && res.success) {
-      alert('🎉 All 20 products successfully synced to your Supabase database table!');
-      window.location.reload();
+      alert(`🎉 All ${products.length} products successfully saved & synced to Supabase!`);
     } else {
       const errMsg = res?.error || 'Unknown error';
       alert(
-        `⚠️ Could not sync to Supabase.\n\nError details: ${errMsg}\n\nPlease copy & run the query in your Supabase SQL Editor (supabase_schema.sql).`
+        `⚠️ Could not sync to Supabase.\n\nError details: ${errMsg}`
       );
     }
   };
@@ -125,7 +125,7 @@ export default function AdminPortalPage({
       reviewsCount: 1,
       badge: newBadge,
       isCustomizable: false,
-      description: 'Handcrafted laser-cut wooden product added via Admin Portal.',
+      description: 'Handcrafted wooden product added via Admin Portal.',
       imageUrl: newImageUrl || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
       inStock: Number(newStock)
     };
@@ -381,7 +381,7 @@ export default function AdminPortalPage({
             </button>
           </div>
 
-          {/* Sync All Catalog Products to Supabase */}
+          {/* Save & Sync Current Products to Supabase */}
           <button
             className="btn-neo btn-neo-blue"
             style={{ fontSize: '0.85rem', padding: '10px 16px' }}
@@ -389,7 +389,7 @@ export default function AdminPortalPage({
             disabled={isSyncing}
           >
             <RefreshCw size={16} className={isSyncing ? 'spin' : ''} />
-            <span>{isSyncing ? 'Syncing...' : 'Sync Products to Supabase'}</span>
+            <span>{isSyncing ? 'Syncing...' : 'Save & Sync Products to Supabase'}</span>
           </button>
         </div>
 

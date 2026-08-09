@@ -11,7 +11,15 @@ import { INITIAL_PRODUCTS } from './data/mockData';
 import { supabaseService } from './lib/supabase';
 
 export default function App() {
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shadow_custom_products');
+      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+    } catch (e) {
+      return INITIAL_PRODUCTS;
+    }
+  });
+
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('shadow_orders');
@@ -61,9 +69,12 @@ export default function App() {
 
   // Load products & orders from Supabase on initial mount
   useEffect(() => {
-    supabaseService.getProducts(INITIAL_PRODUCTS).then((loadedProducts) => {
+    supabaseService.getProducts(products).then((loadedProducts) => {
       if (loadedProducts && loadedProducts.length > 0) {
         setProducts(loadedProducts);
+        try {
+          localStorage.setItem('shadow_custom_products', JSON.stringify(loadedProducts));
+        } catch (e) {}
       }
     });
 
@@ -147,20 +158,36 @@ export default function App() {
     });
   };
 
-  // Product Handlers
+  // Product Handlers (saves to local state, localStorage AND Supabase)
   const handleAddProduct = async (newProd) => {
-    setProducts((prev) => [newProd, ...prev]);
+    setProducts((prev) => {
+      const updated = [newProd, ...prev];
+      try {
+        localStorage.setItem('shadow_custom_products', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
     await supabaseService.addProduct(newProd);
   };
 
   const handleUpdateProduct = (prodId, updates) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === prodId ? { ...p, ...updates } : p))
-    );
+    setProducts((prev) => {
+      const updated = prev.map((p) => (p.id === prodId ? { ...p, ...updates } : p));
+      try {
+        localStorage.setItem('shadow_custom_products', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   const handleDeleteProduct = async (productId) => {
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setProducts((prev) => {
+      const updated = prev.filter((p) => p.id !== productId);
+      try {
+        localStorage.setItem('shadow_custom_products', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
     await supabaseService.deleteProduct(productId);
   };
 
