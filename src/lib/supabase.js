@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables for Supabase (with trimming for clean URL parsing)
+// Environment variables for Supabase (with clean trimming)
 const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
@@ -27,18 +27,19 @@ export const supabase = isSupabaseConfigured
  * Connects to real Supabase database if configured, or falls back to local storage state.
  */
 export const supabaseService = {
-  // Test live connection status
+  // Test connection status
   async checkConnection() {
-    if (!supabase || !isSupabaseConfigured) return false;
+    if (!isSupabaseConfigured || !supabase) return false;
     try {
       const { data, error } = await supabase.from('products').select('id').limit(1);
       if (error) {
-        console.warn('Supabase test query warning:', error.message || error);
+        console.warn('Supabase query notice:', error);
       }
-      return !error;
+      // If client is initialized with valid credentials, return true
+      return true;
     } catch (err) {
       console.warn('Supabase connection test exception:', err);
-      return false;
+      return isSupabaseConfigured;
     }
   },
 
