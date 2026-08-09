@@ -111,7 +111,7 @@ export const supabaseService = {
     }
   },
 
-  // Bulk Seed/Sync Catalog Products to Supabase with automatic column fallback
+  // Bulk Seed/Sync Catalog Products to Supabase with progressive multi-level column fallback
   async syncCatalogToSupabase(productsList, customClient = null) {
     const client = customClient || getSupabaseClient();
     if (!client) {
@@ -119,8 +119,8 @@ export const supabaseService = {
       return { success: false, error: 'Supabase client not initialized.' };
     }
 
-    // 1. Primary full schema format
-    const fullSchemaList = productsList.map((p) => ({
+    // Level 1: Full rich schema payload
+    const fullPayload = productsList.map((p) => ({
       id: p.id,
       name: p.name,
       category: p.category,
@@ -133,6 +133,7 @@ export const supabaseService = {
       reviewsCount: p.reviewsCount || 10,
       badge: p.badge || 'Popular',
       isCustomizable: false,
+      iscustomizable: false,
       description: p.description || '',
       imageUrl: p.imageUrl,
       imageurl: p.imageUrl,
@@ -140,15 +141,13 @@ export const supabaseService = {
     }));
 
     try {
-      const { error: fullErr } = await client.from('products').upsert(fullSchemaList, { onConflict: 'id' });
-      if (!fullErr) {
-        return { success: true };
-      }
+      const { error: err1 } = await client.from('products').upsert(fullPayload, { onConflict: 'id' });
+      if (!err1) return { success: true };
 
-      console.warn('Full schema upsert notice, trying streamlined payload fallback:', fullErr);
+      console.warn('Level 1 upsert notice, trying Level 2 (standard fields):', err1.message);
 
-      // 2. Streamlined payload fallback (compatible with basic table definitions)
-      const cleanPayload = productsList.map((p) => ({
+      // Level 2: Standard fields (with description & image)
+      const standardPayload = productsList.map((p) => ({
         id: p.id,
         name: p.name,
         category: p.category,
@@ -158,12 +157,23 @@ export const supabaseService = {
         imageurl: p.imageUrl
       }));
 
-      const { error: cleanErr } = await client.from('products').upsert(cleanPayload, { onConflict: 'id' });
-      if (!cleanErr) {
-        return { success: true };
-      }
+      const { error: err2 } = await client.from('products').upsert(standardPayload, { onConflict: 'id' });
+      if (!err2) return { success: true };
 
-      return { success: false, error: cleanErr.message || fullErr.message };
+      console.warn('Level 2 upsert notice, trying Level 3 (bare minimum id, name, category, price):', err2.message);
+
+      // Level 3: Bare minimum columns guaranteed to exist on basic tables
+      const minPayload = productsList.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        price: p.price
+      }));
+
+      const { error: err3 } = await client.from('products').upsert(minPayload, { onConflict: 'id' });
+      if (!err3) return { success: true };
+
+      return { success: false, error: err3.message || err2.message || err1.message };
     } catch (err) {
       console.error('Sync exception:', err);
       return { success: false, error: err.message || 'Network exception' };
