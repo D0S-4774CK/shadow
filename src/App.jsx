@@ -3,7 +3,6 @@ import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
 import CategorySidebar from './components/CategorySidebar';
 import ProductGrid from './components/ProductGrid';
-import ProductCustomizerModal from './components/ProductCustomizerModal';
 import CartDrawer from './components/CartDrawer';
 import AdminPortalPage from './components/AdminPortalPage';
 import Footer from './components/Footer';
@@ -59,7 +58,6 @@ export default function App() {
     }
   ]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [customizingProduct, setCustomizingProduct] = useState(null);
 
   // Load products & orders from Supabase on initial mount
   useEffect(() => {
@@ -96,9 +94,7 @@ export default function App() {
   const handleAddToCart = (product, quantityToAdd = 1) => {
     setCartItems((prevItems) => {
       const existingIndex = prevItems.findIndex(
-        (item) =>
-          item.product.id === product.id &&
-          JSON.stringify(item.product.customization) === JSON.stringify(product.customization)
+        (item) => item.product.id === product.id
       );
 
       if (existingIndex > -1) {
@@ -184,7 +180,7 @@ export default function App() {
     );
   }
 
-  // ROUTE 1: CLEAN PUBLIC STOREFRONT (No Admin References)
+  // ROUTE 1: CLEAN PUBLIC STOREFRONT
   return (
     <div className="app-container">
       {/* Top Header */}
@@ -220,7 +216,6 @@ export default function App() {
             products={products}
             activeCategory={activeCategory}
             searchQuery={searchQuery}
-            onCustomizeProduct={(prod) => setCustomizingProduct(prod)}
             onAddToCart={(prod) => handleAddToCart(prod, 1)}
           />
         </div>
@@ -228,15 +223,6 @@ export default function App() {
 
       {/* Footer */}
       <Footer />
-
-      {/* Personalization Modal */}
-      {customizingProduct && (
-        <ProductCustomizerModal
-          product={customizingProduct}
-          onClose={() => setCustomizingProduct(null)}
-          onAddToCart={(custProd) => handleAddToCart(custProd, 1)}
-        />
-      )}
 
       {/* Slide-over Shopping Cart Drawer */}
       <CartDrawer

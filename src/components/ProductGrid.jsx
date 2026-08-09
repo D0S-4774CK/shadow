@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import ProductCard from './ProductCard';
 import { CATEGORIES } from '../data/mockData';
-import { Sparkles, Frown } from 'lucide-react';
+import { Frown } from 'lucide-react';
 
 export default function ProductGrid({
   products,
   activeCategory,
   searchQuery,
-  onCustomizeProduct,
   onAddToCart
 }) {
   const [sortBy, setSortBy] = useState('featured');
@@ -30,7 +29,7 @@ export default function ProductGrid({
     if (sortBy === 'price-low') return a.price - b.price;
     if (sortBy === 'price-high') return b.price - a.price;
     if (sortBy === 'rating') return b.rating - a.rating;
-    return 0; // featured default order
+    return 0;
   });
 
   const categoryObj = CATEGORIES.find((c) => c.id === activeCategory);
@@ -70,7 +69,6 @@ export default function ProductGrid({
             <ProductCard
               key={product.id}
               product={product}
-              onCustomize={onCustomizeProduct}
               onAddToCart={onAddToCart}
             />
           ))}
@@ -87,7 +85,7 @@ export default function ProductGrid({
           <Frown size={48} color="#FF7B8E" style={{ marginBottom: '12px' }} />
           <h3 style={{ fontSize: '1.4rem', marginBottom: '8px' }}>No items found</h3>
           <p style={{ color: '#555', maxWidth: '400px', margin: '0 auto 18px' }}>
-            We couldn't find any products matching "{searchQuery}". Try searching for acrylic, signs, or keychains!
+            We couldn't find any products matching "{searchQuery}". Try searching for decor, gifts, or pendants!
           </p>
         </div>
       )}

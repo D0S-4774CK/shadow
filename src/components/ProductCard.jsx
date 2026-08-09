@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Edit3, Star, Image as ImageIcon } from 'lucide-react';
+import { ShoppingCart, Star, Image as ImageIcon } from 'lucide-react';
 
-export default function ProductCard({ product, onCustomize, onAddToCart }) {
+export default function ProductCard({ product, onAddToCart }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -90,35 +90,15 @@ export default function ProductCard({ product, onCustomize, onAddToCart }) {
           </div>
         </div>
 
-        {/* Action Buttons matching screenshot */}
+        {/* Action Button: Direct Add to Cart */}
         <div className="card-actions">
-          {product.isCustomizable ? (
-            <button
-              className="btn-neo btn-neo-pink"
-              style={{ flex: 1, fontSize: '0.85rem', padding: '8px 10px' }}
-              onClick={() => onCustomize(product)}
-            >
-              <Edit3 size={14} />
-              <span>Customize</span>
-            </button>
-          ) : (
-            <button
-              className="btn-neo btn-neo-yellow"
-              style={{ flex: 1, fontSize: '0.85rem', padding: '8px 10px' }}
-              onClick={() => onAddToCart(product)}
-            >
-              <ShoppingCart size={14} />
-              <span>Add</span>
-            </button>
-          )}
-
           <button
-            className="btn-neo"
-            style={{ padding: '8px 10px', backgroundColor: '#FFFFFF' }}
+            className="btn-neo btn-neo-pink"
+            style={{ width: '100%', fontSize: '0.9rem', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             onClick={() => onAddToCart(product)}
-            title="Quick Add to Cart"
           >
             <ShoppingCart size={16} />
+            <span>Add to Cart</span>
           </button>
         </div>
       </div>
