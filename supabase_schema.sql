@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS public.products (
   "reviewsCount" INTEGER DEFAULT 0,
   reviewscount INTEGER DEFAULT 0,
   badge TEXT,
-  "isCustomizable" BOOLEAN DEFAULT TRUE,
-  iscustomizable BOOLEAN DEFAULT TRUE,
+  "isCustomizable" BOOLEAN DEFAULT FALSE,
+  iscustomizable BOOLEAN DEFAULT FALSE,
   description TEXT,
   "imageUrl" TEXT,
   imageurl TEXT,
@@ -77,6 +77,7 @@ ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read access to products" ON public.products;
+DROP POLICY IF EXISTS "Allow public full access to products" ON public.products;
 DROP POLICY IF EXISTS "Allow public quote submissions" ON public.quotes;
 DROP POLICY IF EXISTS "Allow public read quotes" ON public.quotes;
 DROP POLICY IF EXISTS "Allow public order checkout" ON public.orders;
@@ -85,12 +86,7 @@ DROP POLICY IF EXISTS "Allow admin full access to products" ON public.products;
 DROP POLICY IF EXISTS "Allow admin full access to quotes" ON public.quotes;
 DROP POLICY IF EXISTS "Allow admin full access to orders" ON public.orders;
 
-CREATE POLICY "Allow public read access to products" ON public.products FOR SELECT USING (true);
-CREATE POLICY "Allow public quote submissions" ON public.quotes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public read quotes" ON public.quotes FOR SELECT USING (true);
-CREATE POLICY "Allow public order checkout" ON public.orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public read orders" ON public.orders FOR SELECT USING (true);
-
-CREATE POLICY "Allow admin full access to products" ON public.products FOR ALL USING (true);
-CREATE POLICY "Allow admin full access to quotes" ON public.quotes FOR ALL USING (true);
-CREATE POLICY "Allow admin full access to orders" ON public.orders FOR ALL USING (true);
+-- Public & Admin Policies (allowing read, insert, update, upsert)
+CREATE POLICY "Allow public full access to products" ON public.products FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public quote submissions" ON public.quotes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public order checkout" ON public.orders FOR ALL USING (true) WITH CHECK (true);

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink, Settings, Database, X } from 'lucide-react';
 import { CATEGORIES, INITIAL_PRODUCTS } from '../data/mockData';
 import { supabaseService, getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
-import { createClient } from '@supabase/supabase-js';
 
 export default function AdminPortalPage({
   products,
@@ -95,15 +94,16 @@ export default function AdminPortalPage({
     }
 
     setIsSyncing(true);
-    const success = await supabaseService.syncCatalogToSupabase(INITIAL_PRODUCTS, client);
+    const res = await supabaseService.syncCatalogToSupabase(INITIAL_PRODUCTS, client);
     setIsSyncing(false);
 
-    if (success) {
+    if (res && res.success) {
       alert('🎉 All 20 products successfully synced to your Supabase database table!');
       window.location.reload();
     } else {
+      const errMsg = res?.error || 'Unknown error';
       alert(
-        '⚠️ Could not sync to Supabase.\n\nMake sure you executed the SQL query in Supabase SQL Editor first (supabase_schema.sql).'
+        `⚠️ Could not sync to Supabase.\n\nError details: ${errMsg}\n\nPlease copy & run the query in your Supabase SQL Editor (supabase_schema.sql).`
       );
     }
   };

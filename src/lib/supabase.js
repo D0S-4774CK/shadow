@@ -94,7 +94,7 @@ export const supabaseService = {
         categorylabel: newProduct.categoryLabel,
         formattedprice: newProduct.formattedPrice,
         imageurl: newProduct.imageUrl,
-        iscustomizable: newProduct.isCustomizable,
+        iscustomizable: false,
         instock: newProduct.inStock
       };
 
@@ -115,7 +115,7 @@ export const supabaseService = {
     const client = customClient || getSupabaseClient();
     if (!client) {
       console.error('Supabase client not initialized.');
-      return false;
+      return { success: false, error: 'Supabase client not initialized.' };
     }
     try {
       const formattedList = productsList.map((p) => ({
@@ -143,12 +143,12 @@ export const supabaseService = {
       const { error } = await client.from('products').upsert(formattedList, { onConflict: 'id' });
       if (error) {
         console.error('Error syncing products to Supabase:', error);
-        return false;
+        return { success: false, error: error.message || JSON.stringify(error) };
       }
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('Sync error:', err);
-      return false;
+      return { success: false, error: err.message || 'Unknown network error' };
     }
   },
 
