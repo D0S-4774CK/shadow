@@ -3,19 +3,16 @@ import Header from './components/Header';
 import HeroBanner from './components/HeroBanner';
 import CategorySidebar from './components/CategorySidebar';
 import ProductGrid from './components/ProductGrid';
-import LaserQuoteStudio from './components/LaserQuoteStudio';
 import ProductCustomizerModal from './components/ProductCustomizerModal';
 import CartDrawer from './components/CartDrawer';
-import AdminPanel from './components/AdminPanel';
-import AdminLoginModal from './components/AdminLoginModal';
+import AdminPortalPage from './components/AdminPortalPage';
 import Footer from './components/Footer';
 
-import { INITIAL_PRODUCTS, INITIAL_QUOTES } from './data/mockData';
+import { INITIAL_PRODUCTS } from './data/mockData';
 import { supabaseService } from './lib/supabase';
 
 export default function App() {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [quotes, setQuotes] = useState(INITIAL_QUOTES);
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('shadow_orders');
@@ -26,8 +23,32 @@ export default function App() {
   });
 
   const [activeCategory, setActiveCategory] = useState('all');
-  const [activeView, setActiveView] = useState('catalog'); // 'catalog' | 'laser-studio'
+  const [activeView, setActiveView] = useState('catalog');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Routing state for dedicated Admin Webpage (/admin or #admin)
+  const [routePath, setRoutePath] = useState(() => {
+    return window.location.pathname.toLowerCase() === '/admin' || window.location.hash.toLowerCase() === '#admin'
+      ? '/admin'
+      : '/';
+  });
+
+  // Listen for browser URL changes
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const isAdminRoute =
+        window.location.pathname.toLowerCase() === '/admin' ||
+        window.location.hash.toLowerCase() === '#admin';
+      setRoutePath(isAdminRoute ? '/admin' : '/');
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
 
   // Cart & Modal states
   const [cartItems, setCartItems] = useState([
@@ -38,9 +59,6 @@ export default function App() {
     }
   ]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [customizingProduct, setCustomizingProduct] = useState(null);
 
   // Load products & orders from Supabase on initial mount
@@ -61,23 +79,17 @@ export default function App() {
     });
   }, []);
 
-  // Admin Security Trigger
-  const handleOpenAdminTrigger = () => {
-    if (isAdminAuthenticated) {
-      setIsAdminOpen(true);
+  // Navigation Helper
+  const navigateTo = (path) => {
+    if (path === '/admin') {
+      window.history.pushState({}, '', '/admin');
+      window.location.hash = 'admin';
+      setRoutePath('/admin');
     } else {
-      setIsAdminLoginOpen(true);
+      window.history.pushState({}, '', '/');
+      window.location.hash = '';
+      setRoutePath('/');
     }
-  };
-
-  const handleAdminLoginSuccess = () => {
-    setIsAdminAuthenticated(true);
-    setIsAdminOpen(true);
-  };
-
-  const handleAdminLogout = () => {
-    setIsAdminAuthenticated(false);
-    setIsAdminOpen(false);
   };
 
   // Cart Handlers
@@ -139,40 +151,40 @@ export default function App() {
     });
   };
 
-  // Admin Product & Quote Handlers with Supabase Sync
+  // Product Handlers
   const handleAddProduct = async (newProd) => {
-    if (!isAdminAuthenticated) return;
     setProducts((prev) => [newProd, ...prev]);
     await supabaseService.addProduct(newProd);
   };
 
   const handleUpdateProduct = (prodId, updates) => {
-    if (!isAdminAuthenticated) return;
     setProducts((prev) =>
       prev.map((p) => (p.id === prodId ? { ...p, ...updates } : p))
     );
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (!isAdminAuthenticated) return;
     setProducts((prev) => prev.filter((p) => p.id !== productId));
     await supabaseService.deleteProduct(productId);
   };
 
-  const handleAddQuote = async (newQuote) => {
-    setQuotes((prev) => [newQuote, ...prev]);
-    await supabaseService.submitQuote(newQuote);
-  };
-
-  const handleUpdateQuoteStatus = (quoteId, status) => {
-    if (!isAdminAuthenticated) return;
-    setQuotes((prev) =>
-      prev.map((q) => (q.id === quoteId ? { ...q, status } : q))
-    );
-  };
-
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // ROUTE 2: DEDICATED SEPARATE ADMIN PORTAL WEBPAGE (/admin)
+  if (routePath === '/admin') {
+    return (
+      <AdminPortalPage
+        products={products}
+        onAddProduct={handleAddProduct}
+        onUpdateProduct={handleUpdateProduct}
+        onDeleteProduct={handleDeleteProduct}
+        orders={orders}
+        onNavigateToStore={() => navigateTo('/')}
+      />
+    );
+  }
+
+  // ROUTE 1: CLEAN PUBLIC STOREFRONT (No Admin References)
   return (
     <div className="app-container">
       {/* Top Header */}
@@ -181,23 +193,18 @@ export default function App() {
         setSearchQuery={setSearchQuery}
         cartCount={totalCartCount}
         onOpenCart={() => setIsCartOpen(true)}
-        onOpenAdmin={handleOpenAdminTrigger}
-        activeView={activeView}
         setActiveView={setActiveView}
-        isAdminAuthenticated={isAdminAuthenticated}
-        onAdminLogout={handleAdminLogout}
       />
 
       {/* Hero Banner Section */}
       <HeroBanner
-        onOpenStudio={() => setActiveView('laser-studio')}
         onExploreCatalog={() => {
           setActiveView('catalog');
           setActiveCategory('all');
         }}
       />
 
-      {/* Main Workspace Layout matching reference screenshot */}
+      {/* Main Workspace Layout */}
       <main className="main-layout">
         {/* Left Column: Category Sidebar */}
         <CategorySidebar
@@ -207,22 +214,15 @@ export default function App() {
           setActiveView={setActiveView}
         />
 
-        {/* Right Column: Catalog Grid OR Laser Cutting Studio */}
+        {/* Right Column: Catalog Grid */}
         <div className="main-content-area">
-          {activeView === 'laser-studio' ? (
-            <LaserQuoteStudio
-              onAddToCart={handleAddToCart}
-              onSubmitQuote={handleAddQuote}
-            />
-          ) : (
-            <ProductGrid
-              products={products}
-              activeCategory={activeCategory}
-              searchQuery={searchQuery}
-              onCustomizeProduct={(prod) => setCustomizingProduct(prod)}
-              onAddToCart={(prod) => handleAddToCart(prod, 1)}
-            />
-          )}
+          <ProductGrid
+            products={products}
+            activeCategory={activeCategory}
+            searchQuery={searchQuery}
+            onCustomizeProduct={(prod) => setCustomizingProduct(prod)}
+            onAddToCart={(prod) => handleAddToCart(prod, 1)}
+          />
         </div>
       </main>
 
@@ -248,29 +248,6 @@ export default function App() {
         onClearCart={handleClearCart}
         onOrderCreated={handleOrderCreated}
       />
-
-      {/* Admin Passcode Login Modal */}
-      <AdminLoginModal
-        isOpen={isAdminLoginOpen}
-        onClose={() => setIsAdminLoginOpen(false)}
-        onLoginSuccess={handleAdminLoginSuccess}
-      />
-
-      {/* Protected Admin Panel Modal */}
-      {isAdminAuthenticated && (
-        <AdminPanel
-          isOpen={isAdminOpen}
-          onClose={() => setIsAdminOpen(false)}
-          products={products}
-          onAddProduct={handleAddProduct}
-          onUpdateProduct={handleUpdateProduct}
-          onDeleteProduct={handleDeleteProduct}
-          quotes={quotes}
-          onUpdateQuoteStatus={handleUpdateQuoteStatus}
-          orders={orders}
-          onLogout={handleAdminLogout}
-        />
-      )}
     </div>
   );
 }

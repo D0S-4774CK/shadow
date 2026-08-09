@@ -1,16 +1,12 @@
 import React from 'react';
-import { Search, ShoppingBag, ShieldCheck, Lock, LogOut } from 'lucide-react';
+import { Search, ShoppingBag } from 'lucide-react';
 
 export default function Header({
   searchQuery,
   setSearchQuery,
   cartCount,
   onOpenCart,
-  onOpenAdmin,
-  activeView,
-  setActiveView,
-  isAdminAuthenticated,
-  onAdminLogout
+  setActiveView
 }) {
   return (
     <header className="app-header">
@@ -19,7 +15,7 @@ export default function Header({
         <div
           className="brand-logo"
           onClick={() => setActiveView('catalog')}
-          title="Shadow Gifting & Laser Cutting"
+          title="Shadow Gifting & Laser Cutting Studio"
         >
           <span className="brand-sparkle">✦</span>
           <span>Shadow</span>
@@ -32,13 +28,13 @@ export default function Header({
           <input
             type="text"
             className="header-search-input"
-            placeholder="Search custom gifts, wall decor, wooden crafts..."
+            placeholder="Search custom wooden gifts, wall decor, ornaments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* Action Buttons */}
+        {/* Storefront Action Buttons (100% Clean - No Admin References) */}
         <div className="header-actions">
           <button
             className="btn-neo btn-neo-yellow"
@@ -53,39 +49,6 @@ export default function Header({
               </span>
             )}
           </button>
-
-          {/* Protected Admin Access Control */}
-          {isAdminAuthenticated ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                className="btn-neo"
-                style={{ backgroundColor: '#C1E1C1', fontWeight: '700', borderRadius: '12px' }}
-                onClick={onOpenAdmin}
-                title="Open Admin Management Panel"
-              >
-                <ShieldCheck size={18} />
-                <span>Admin Panel</span>
-              </button>
-              <button
-                className="btn-neo"
-                style={{ padding: '8px 10px', backgroundColor: '#FFD6E0' }}
-                onClick={onAdminLogout}
-                title="Lock Admin Session"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          ) : (
-            <button
-              className="btn-neo"
-              style={{ fontWeight: '700', borderRadius: '12px', backgroundColor: '#FFFFFF' }}
-              onClick={onOpenAdmin}
-              title="Admin Authentication Required"
-            >
-              <Lock size={16} color="#D81B60" />
-              <span>Admin Login</span>
-            </button>
-          )}
         </div>
       </div>
     </header>
