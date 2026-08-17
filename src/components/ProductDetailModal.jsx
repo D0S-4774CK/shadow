@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, ShoppingBag, CheckCircle2, MessageSquare, Tag, ShieldCheck, Sparkles, Send, User } from 'lucide-react';
+import { X, Star, ShoppingBag, CheckCircle2, MessageSquare, Tag, Sparkles, Send, User } from 'lucide-react';
 import { supabaseService } from '../lib/supabase';
 
 export default function ProductDetailModal({
@@ -27,23 +27,14 @@ export default function ProductDetailModal({
       setQuantity(1);
       setLoadingReviews(true);
 
-      // Default mock reviews for initial showcase
       const initialMockReviews = [
         {
           id: 'rev-1',
           product_id: product.id,
           reviewer_name: 'Priya Sharma',
           rating: 5,
-          comment: 'Absolutely stunning craft quality! The 3mm wood cutting is super precise and clean.',
+          comment: 'Beautiful quality craft item!',
           created_at: new Date(Date.now() - 86400000 * 2).toISOString()
-        },
-        {
-          id: 'rev-2',
-          product_id: product.id,
-          reviewer_name: 'Amit Kumar',
-          rating: 5,
-          comment: 'Perfect gift item! Packaging was great and delivery was fast.',
-          created_at: new Date(Date.now() - 86400000 * 5).toISOString()
         }
       ];
 
@@ -88,7 +79,7 @@ export default function ProductDetailModal({
 
   const productTags = Array.isArray(product.tags)
     ? product.tags
-    : (product.tags ? String(product.tags).split(',') : ['Handcrafted', 'Wood', 'Laser Cut']);
+    : (product.tags ? String(product.tags).split(',') : []);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -161,25 +152,6 @@ export default function ProductDetailModal({
                 </span>
               )}
             </div>
-
-            <div
-              style={{
-                marginTop: '14px',
-                padding: '10px 14px',
-                backgroundColor: '#FFFDF0',
-                borderRadius: '10px',
-                border: '1.5px solid #1a1a1a',
-                fontSize: '0.8rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <ShieldCheck size={18} color="#1b4332" />
-              <span>
-                <strong>Material:</strong> 3mm Baltic Birch Wood (Natural Finish)
-              </span>
-            </div>
           </div>
 
           {/* Right Column: Title, Price, Description, Add to Cart */}
@@ -209,38 +181,41 @@ export default function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Description */}
-              <p style={{ fontSize: '0.92rem', color: '#444', lineHeight: '1.5', marginBottom: '16px' }}>
-                {product.description ||
-                  'Precision grade 3mm natural Baltic Birch wood laser-cut product. Smooth sanded edges, durable, and eco-friendly design.'}
-              </p>
+              {/* Description (Only show if written by Admin) */}
+              {product.description && product.description.trim() !== '' && (
+                <p style={{ fontSize: '0.92rem', color: '#333', lineHeight: '1.5', marginBottom: '16px' }}>
+                  {product.description}
+                </p>
+              )}
 
               {/* Tags */}
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
-                {productTags.map((t, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: '700',
-                      padding: '3px 8px',
-                      backgroundColor: '#FEFCE8',
-                      border: '1px solid #1a1a1a',
-                      borderRadius: '6px',
-                      color: '#555',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <Tag size={12} />#{t.trim()}
-                  </span>
-                ))}
-              </div>
+              {productTags.length > 0 && (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  {productTags.map((t, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        padding: '3px 8px',
+                        backgroundColor: '#FEFCE8',
+                        border: '1px solid #1a1a1a',
+                        borderRadius: '6px',
+                        color: '#555',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Tag size={12} />#{t.trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Quantity Selector & Add to Cart */}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '16px' }}>
               <div
                 style={{
                   display: 'flex',
@@ -368,7 +343,7 @@ export default function ProductDetailModal({
               <textarea
                 className="form-textarea"
                 rows={2}
-                placeholder="Share your thoughts about this wooden craft product..."
+                placeholder="Share your thoughts about this product..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 required
@@ -386,7 +361,7 @@ export default function ProductDetailModal({
             </button>
           </form>
 
-          {/* Public Reviews List (Visible to All) */}
+          {/* Public Reviews List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {reviews.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#666', fontSize: '0.9rem', padding: '20px' }}>

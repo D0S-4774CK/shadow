@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink, Settings, Database, X, Layers, Users, CreditCard, Tag, Globe } from 'lucide-react';
+import { Lock, Unlock, KeyRound, AlertCircle, Package, ShoppingBag, ShieldCheck, LogOut, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Plus, Image as ImageIcon, ExternalLink, Settings, Database, X, Layers, Users, CreditCard, Tag, Globe, AlignLeft } from 'lucide-react';
 import { CATEGORIES as DEFAULT_CATEGORIES } from '../data/mockData';
 import { supabaseService, getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 
@@ -46,7 +46,7 @@ export default function AdminPortalPage({
   const [newBadge, setNewBadge] = useState('New Arrival');
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newTags, setNewTags] = useState('Wood, Laser Cut, Craft');
+  const [newTags, setNewTags] = useState('');
 
   // New category form state
   const [newCatId, setNewCatId] = useState('');
@@ -138,7 +138,7 @@ export default function AdminPortalPage({
 
     const catObj = categories.find((c) => c.id === newCategory);
     const generatedSlug = newSlug.trim() || newTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const parsedTags = newTags.split(',').map((t) => t.trim()).filter(Boolean);
+    const parsedTags = newTags ? newTags.split(',').map((t) => t.trim()).filter(Boolean) : [];
 
     const created = {
       id: `prod-${Date.now()}`,
@@ -152,10 +152,10 @@ export default function AdminPortalPage({
       reviewsCount: 1,
       badge: newBadge,
       isCustomizable: false,
-      description: newDescription || 'Handcrafted wooden product added via Admin Portal.',
+      description: newDescription.trim() || '',
       imageUrl: newImageUrl || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
       inStock: Number(newStock),
-      tags: parsedTags.length > 0 ? parsedTags : ['Wood', 'Laser Cut']
+      tags: parsedTags
     };
 
     onAddProduct(created);
@@ -164,6 +164,7 @@ export default function AdminPortalPage({
     setNewSlug('');
     setNewImageUrl('');
     setNewDescription('');
+    setNewTags('');
   };
 
   // Category Creator Handler
@@ -510,9 +511,9 @@ export default function AdminPortalPage({
           <div className="card-neo" style={{ padding: '24px', backgroundColor: '#FFFFFF' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <h2 style={{ fontSize: '1.4rem' }}>Manage Products & Attributes</h2>
+                <h2 style={{ fontSize: '1.4rem' }}>Manage Products & Descriptions</h2>
                 <p style={{ fontSize: '0.88rem', color: '#666' }}>
-                  Add, edit, or remove products with Name, Slug, Category, Tags, Description, Price (₹), Stock, and Picture URL.
+                  Add, edit, or remove products and write custom descriptions directly.
                 </p>
               </div>
 
@@ -538,21 +539,21 @@ export default function AdminPortalPage({
                   boxShadow: '4px 4px 0px #1a1a1a'
                 }}
               >
-                <h3 style={{ marginBottom: '14px', fontSize: '1.1rem' }}>Create New Product with Attributes</h3>
+                <h3 style={{ marginBottom: '14px', fontSize: '1.1rem' }}>Create New Product</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                   <div>
                     <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>Product Name</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Product Title (e.g. Moon Pendant, Wooden Clock)"
+                      placeholder="Product Title"
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
                       required
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>URL Slug (Auto-generated if empty)</label>
+                    <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>URL Slug</label>
                     <input
                       type="text"
                       className="form-input"
@@ -609,11 +610,11 @@ export default function AdminPortalPage({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                   <div>
-                    <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>Product Tags (comma-separated)</label>
+                    <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>Tags (comma-separated)</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Wood, Laser Cut, Gift, Wall Decor"
+                      placeholder="e.g. Wall Decor, Pendant"
                       value={newTags}
                       onChange={(e) => setNewTags(e.target.value)}
                     />
@@ -631,11 +632,11 @@ export default function AdminPortalPage({
                 </div>
 
                 <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>Description</label>
+                  <label style={{ fontSize: '0.78rem', fontWeight: '700' }}>Custom Description (Written by Admin)</label>
                   <textarea
                     className="form-textarea"
                     rows={2}
-                    placeholder="Enter detailed laser craft product description..."
+                    placeholder="Write your custom product description here..."
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
                   />
@@ -648,7 +649,7 @@ export default function AdminPortalPage({
               </form>
             )}
 
-            {/* Inventory List with Attributes */}
+            {/* Inventory List with Inline Description Editor */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {products.map((prod) => (
                 <div
@@ -733,7 +734,7 @@ export default function AdminPortalPage({
                     </div>
                   </div>
 
-                  {/* Attributes Editor Row */}
+                  {/* Picture URL & Tags Row */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', backgroundColor: '#FFFFFF', padding: '10px 14px', borderRadius: '10px', border: '1px solid #1a1a1a' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <ImageIcon size={14} color="#555" />
@@ -756,6 +757,19 @@ export default function AdminPortalPage({
                         onChange={(e) => onUpdateProduct(prod.id, { tags: e.target.value.split(',').map(t => t.trim()) })}
                       />
                     </div>
+                  </div>
+
+                  {/* Description Editor Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#FFFFFF', padding: '10px 14px', borderRadius: '10px', border: '1px solid #1a1a1a' }}>
+                    <AlignLeft size={14} color="#555" />
+                    <span style={{ fontSize: '0.78rem', fontWeight: '700', whiteSpace: 'nowrap' }}>Description:</span>
+                    <input
+                      type="text"
+                      placeholder="Write custom product description..."
+                      style={{ flex: 1, padding: '4px 6px', fontSize: '0.8rem', border: '1px solid #ccc', borderRadius: '6px' }}
+                      value={prod.description || ''}
+                      onChange={(e) => onUpdateProduct(prod.id, { description: e.target.value })}
+                    />
                   </div>
                 </div>
               ))}
