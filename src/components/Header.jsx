@@ -1,11 +1,14 @@
 import React from 'react';
-import { Search, ShoppingBag } from 'lucide-react';
+import { Search, ShoppingBag, User, CheckCircle2 } from 'lucide-react';
 
 export default function Header({
   searchQuery,
   setSearchQuery,
   cartCount,
   onOpenCart,
+  currentUser,
+  onOpenAuth,
+  onOpenProfile,
   setActiveView
 }) {
   return (
@@ -34,8 +37,31 @@ export default function Header({
           />
         </div>
 
-        {/* Storefront Action Buttons (100% Clean - No Admin References) */}
+        {/* Action Buttons */}
         <div className="header-actions">
+          {/* Customer Auth Profile Button */}
+          {currentUser ? (
+            <button
+              className="btn-neo btn-neo-pink"
+              onClick={onOpenProfile}
+              title="View Account Profile & Track Orders"
+            >
+              <User size={18} />
+              <span>Account</span>
+            </button>
+          ) : (
+            <button
+              className="btn-neo"
+              style={{ backgroundColor: '#FFFFFF' }}
+              onClick={onOpenAuth}
+              title="Sign In or Register Account"
+            >
+              <User size={18} />
+              <span>Sign In</span>
+            </button>
+          )}
+
+          {/* Cart Button */}
           <button
             className="btn-neo btn-neo-yellow"
             onClick={onOpenCart}

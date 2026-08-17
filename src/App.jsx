@@ -5,10 +5,12 @@ import CategorySidebar from './components/CategorySidebar';
 import ProductGrid from './components/ProductGrid';
 import CartDrawer from './components/CartDrawer';
 import AdminPortalPage from './components/AdminPortalPage';
+import CustomerAuthModal from './components/CustomerAuthModal';
+import CustomerProfilePage from './components/CustomerProfilePage';
 import Footer from './components/Footer';
 
-import { INITIAL_PRODUCTS } from './data/mockData';
-import { supabaseService } from './lib/supabase';
+import { INITIAL_PRODUCTS, CATEGORIES as DEFAULT_CATEGORIES } from './data/mockData';
+import { supabaseService, getSupabaseClient } from './lib/supabase';
 
 export default function App() {
   const [products, setProducts] = useState(() => {
@@ -17,6 +19,15 @@ export default function App() {
       return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
     } catch (e) {
       return INITIAL_PRODUCTS;
+    }
+  });
+
+  const [categories, setCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shadow_categories');
+      return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
+    } catch (e) {
+      return DEFAULT_CATEGORIES;
     }
   });
 
@@ -29,24 +40,34 @@ export default function App() {
     }
   });
 
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeView, setActiveView] = useState('catalog');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Routing state for dedicated Admin Webpage (/admin or #admin)
+  // Routing state for dedicated pages (/admin, /profile, /)
   const [routePath, setRoutePath] = useState(() => {
-    return window.location.pathname.toLowerCase() === '/admin' || window.location.hash.toLowerCase() === '#admin'
-      ? '/admin'
-      : '/';
+    const p = window.location.pathname.toLowerCase();
+    const h = window.location.hash.toLowerCase();
+    if (p === '/admin' || h === '#admin') return '/admin';
+    if (p === '/profile' || h === '#profile') return '/profile';
+    return '/';
   });
 
-  // Listen for browser URL changes
+  // Listen for URL route changes
   useEffect(() => {
     const handleLocationChange = () => {
-      const isAdminRoute =
-        window.location.pathname.toLowerCase() === '/admin' ||
-        window.location.hash.toLowerCase() === '#admin';
-      setRoutePath(isAdminRoute ? '/admin' : '/');
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      if (p === '/admin' || h === '#admin') {
+        setRoutePath('/admin');
+      } else if (p === '/profile' || h === '#profile') {
+        setRoutePath('/profile');
+      } else {
+        setRoutePath('/');
+      }
     };
 
     window.addEventListener('popstate', handleLocationChange);
@@ -67,13 +88,39 @@ export default function App() {
   ]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Load products & orders from Supabase on initial mount
+  // Initial data loading from Supabase & Auth subscription
+  useEffect(() => {
+    // Check Current User Auth
+    supabaseService.getCurrentUser().then((u) => {
+      if (u) setCurrentUser(u);
+    });
+
+    const client = getSupabaseClient();
+    if (client) {
+      const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
+        setCurrentUser(session?.user || null);
+      });
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
+    }
+  }, []);
+
   useEffect(() => {
     supabaseService.getProducts(products).then((loadedProducts) => {
       if (loadedProducts && loadedProducts.length > 0) {
         setProducts(loadedProducts);
         try {
           localStorage.setItem('shadow_custom_products', JSON.stringify(loadedProducts));
+        } catch (e) {}
+      }
+    });
+
+    supabaseService.getCategories(categories).then((loadedCategories) => {
+      if (loadedCategories && loadedCategories.length > 0) {
+        setCategories(loadedCategories);
+        try {
+          localStorage.setItem('shadow_categories', JSON.stringify(loadedCategories));
         } catch (e) {}
       }
     });
@@ -94,6 +141,10 @@ export default function App() {
       window.history.pushState({}, '', '/admin');
       window.location.hash = 'admin';
       setRoutePath('/admin');
+    } else if (path === '/profile') {
+      window.history.pushState({}, '', '/profile');
+      window.location.hash = 'profile';
+      setRoutePath('/profile');
     } else {
       window.history.pushState({}, '', '/');
       window.location.hash = '';
@@ -149,13 +200,40 @@ export default function App() {
   };
 
   const handleOrderCreated = (newOrder) => {
+    const enrichedOrder = {
+      ...newOrder,
+      user_id: currentUser?.id || null
+    };
+
     setOrders((prev) => {
-      const updated = [newOrder, ...prev];
+      const updated = [enrichedOrder, ...prev];
       try {
         localStorage.setItem('shadow_orders', JSON.stringify(updated));
       } catch (e) {}
       return updated;
     });
+  };
+
+  // Category Handlers
+  const handleAddCategory = (newCat) => {
+    setCategories((prev) => {
+      const updated = [...prev, newCat];
+      try {
+        localStorage.setItem('shadow_categories', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleDeleteCategory = (catId) => {
+    setCategories((prev) => {
+      const updated = prev.filter((c) => c.id !== catId);
+      try {
+        localStorage.setItem('shadow_categories', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+    supabaseService.deleteCategory(catId);
   };
 
   // Product Handlers (saves to local state, localStorage AND Supabase)
@@ -191,6 +269,18 @@ export default function App() {
     await supabaseService.deleteProduct(productId);
   };
 
+  const handleUpdateOrder = (orderId, updates) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, ...updates } : o))
+    );
+  };
+
+  const handleSignOut = async () => {
+    await supabaseService.signOut();
+    setCurrentUser(null);
+    navigateTo('/');
+  };
+
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // ROUTE 2: DEDICATED SEPARATE ADMIN PORTAL WEBPAGE (/admin)
@@ -198,10 +288,26 @@ export default function App() {
     return (
       <AdminPortalPage
         products={products}
+        categories={categories}
         onAddProduct={handleAddProduct}
         onUpdateProduct={handleUpdateProduct}
         onDeleteProduct={handleDeleteProduct}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
         orders={orders}
+        onUpdateOrder={handleUpdateOrder}
+        onNavigateToStore={() => navigateTo('/')}
+      />
+    );
+  }
+
+  // ROUTE 3: CUSTOMER PROFILE & ORDER TRACKER PAGE (/profile)
+  if (routePath === '/profile') {
+    return (
+      <CustomerProfilePage
+        currentUser={currentUser}
+        orders={orders}
+        onSignOut={handleSignOut}
         onNavigateToStore={() => navigateTo('/')}
       />
     );
@@ -216,6 +322,9 @@ export default function App() {
         setSearchQuery={setSearchQuery}
         cartCount={totalCartCount}
         onOpenCart={() => setIsCartOpen(true)}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenProfile={() => navigateTo('/profile')}
         setActiveView={setActiveView}
       />
 
@@ -235,6 +344,7 @@ export default function App() {
           onSelectCategory={(catId) => setActiveCategory(catId)}
           activeView={activeView}
           setActiveView={setActiveView}
+          categories={categories}
         />
 
         {/* Right Column: Catalog Grid */}
@@ -260,6 +370,16 @@ export default function App() {
         onRemoveItem={handleRemoveCartItem}
         onClearCart={handleClearCart}
         onOrderCreated={handleOrderCreated}
+      />
+
+      {/* Customer Authentication Modal */}
+      <CustomerAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+          navigateTo('/profile');
+        }}
       />
     </div>
   );

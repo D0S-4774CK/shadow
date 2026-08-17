@@ -1,13 +1,14 @@
 import React from 'react';
-import { CATEGORIES } from '../data/mockData';
+import { CATEGORIES as DEFAULT_CATEGORIES } from '../data/mockData';
 
 export default function CategorySidebar({
   activeCategory,
   onSelectCategory,
   activeView,
-  setActiveView
+  setActiveView,
+  categories = DEFAULT_CATEGORIES
 }) {
-  const categoriesList = CATEGORIES.filter((c) => c.id !== 'custom-studio');
+  const categoriesList = categories.filter((c) => c.id !== 'custom-studio');
 
   return (
     <aside className="sidebar-container">
@@ -33,7 +34,7 @@ export default function CategorySidebar({
                   onSelectCategory(cat.id);
                 }}
               >
-                <span>{cat.icon}</span>
+                <span>{cat.icon || '🪵'}</span>
                 <span>{cat.label}</span>
               </button>
             </li>
