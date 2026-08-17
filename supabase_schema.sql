@@ -73,16 +73,17 @@ CREATE TABLE IF NOT EXISTS public.orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure all order columns exist if orders table was created earlier
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS user_id UUID;
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_name TEXT;
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_phone TEXT;
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_email TEXT;
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipping_address TEXT;
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Processing';
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'Pending';
+-- 6. Product Reviews & Comments Table (Public Customer Reviews)
+CREATE TABLE IF NOT EXISTS public.product_reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id TEXT NOT NULL,
+  reviewer_name TEXT NOT NULL,
+  rating INTEGER DEFAULT 5,
+  comment TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- 6. Store Settings Table
+-- 7. Store Settings Table
 CREATE TABLE IF NOT EXISTS public.store_settings (
   setting_key TEXT PRIMARY KEY,
   setting_value TEXT NOT NULL,
@@ -98,21 +99,24 @@ VALUES
   ('hero_tagline', 'Precision Cut Wood Crafts, Designed for Everyday Moments.')
 ON CONFLICT (setting_key) DO NOTHING;
 
--- 7. Row Level Security (RLS) Policies (Safely Re-runnable)
+-- 8. Row Level Security (RLS) Policies (Safely Re-runnable)
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public full access to products" ON public.products;
 DROP POLICY IF EXISTS "Allow public full access to categories" ON public.categories;
 DROP POLICY IF EXISTS "Allow public full access to user_roles" ON public.user_roles;
 DROP POLICY IF EXISTS "Allow public full access to orders" ON public.orders;
+DROP POLICY IF EXISTS "Allow public full access to product_reviews" ON public.product_reviews;
 DROP POLICY IF EXISTS "Allow public full access to store_settings" ON public.store_settings;
 
 CREATE POLICY "Allow public full access to products" ON public.products FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to categories" ON public.categories FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to user_roles" ON public.user_roles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to orders" ON public.orders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public full access to product_reviews" ON public.product_reviews FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public full access to store_settings" ON public.store_settings FOR ALL USING (true) WITH CHECK (true);

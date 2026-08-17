@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Sparkles, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { X, User, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabaseService } from '../lib/supabase';
 
 export default function CustomerAuthModal({ isOpen, onClose, onAuthSuccess }) {
@@ -21,17 +21,29 @@ export default function CustomerAuthModal({ isOpen, onClose, onAuthSuccess }) {
 
     if (isSignUp) {
       const { user, error } = await supabaseService.signUp(email, password, fullName);
-      setLoading(false);
       if (error) {
-        setErrorMsg(error.message || 'Registration failed.');
+        // If email confirmation is disabled or user created, attempt auto sign-in
+        const signInRes = await supabaseService.signIn(email, password);
+        setLoading(false);
+        if (signInRes.user) {
+          setSuccessMsg('🎉 Account created & signed in successfully!');
+          if (onAuthSuccess) onAuthSuccess(signInRes.user);
+          setTimeout(() => {
+            onClose();
+          }, 1000);
+        } else {
+          setErrorMsg(error.message || 'Registration failed.');
+        }
       } else {
-        setSuccessMsg(
-          '🎉 Registration successful! If email confirmation is enabled in your Supabase Dashboard, please check your inbox (Resend API configured).'
-        );
-        if (onAuthSuccess) onAuthSuccess(user);
+        // Try auto sign-in to guarantee session creation
+        const signInRes = await supabaseService.signIn(email, password);
+        setLoading(false);
+        const loggedUser = signInRes.user || user;
+        setSuccessMsg('🎉 Account created & signed in successfully!');
+        if (onAuthSuccess) onAuthSuccess(loggedUser);
         setTimeout(() => {
           onClose();
-        }, 2000);
+        }, 1000);
       }
     } else {
       const { user, error } = await supabaseService.signIn(email, password);

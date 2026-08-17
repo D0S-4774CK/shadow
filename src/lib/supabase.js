@@ -78,7 +78,6 @@ export const supabaseService = {
       });
 
       if (!error && data?.user) {
-        // Register in user_roles as customer by default
         await client.from('user_roles').insert([
           { user_id: data.user.id, email: data.user.email, role: 'customer' }
         ]);
@@ -124,12 +123,10 @@ export const supabaseService = {
     }
   },
 
-  // Check if a given email/user is an Admin
   async checkIsAdmin(userOrEmail) {
     if (!userOrEmail) return false;
     const email = typeof userOrEmail === 'string' ? userOrEmail : userOrEmail.email;
 
-    // Default superadmin emails
     if (email === 'harsha.stratcrowd@gmail.com' || email === 'admin@shadowstudio.in') {
       return true;
     }
@@ -149,7 +146,6 @@ export const supabaseService = {
     }
   },
 
-  // Get all user roles for admin management
   async getUserRoles() {
     const client = getSupabaseClient();
     if (!client) return [];
@@ -161,12 +157,11 @@ export const supabaseService = {
     }
   },
 
-  // Grant Admin Role to an Email
   async grantAdminRole(email) {
     const client = getSupabaseClient();
     if (!client) return false;
     try {
-      const { data, error } = await client
+      const { error } = await client
         .from('user_roles')
         .upsert([{ email: email.trim().toLowerCase(), role: 'admin' }], { onConflict: 'email' });
       return !error;
@@ -358,7 +353,54 @@ export const supabaseService = {
   },
 
   // ----------------------------------------------------
-  // 4. ORDERS & PAYMENT STATUS MANAGEMENT
+  // 4. PUBLIC PRODUCT REVIEWS & COMMENTS
+  // ----------------------------------------------------
+  async getProductReviews(productId, fallbackReviews = []) {
+    const client = getSupabaseClient();
+    if (!client) return fallbackReviews;
+    try {
+      const { data, error } = await client
+        .from('product_reviews')
+        .select('*')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) return fallbackReviews;
+      return data;
+    } catch (err) {
+      return fallbackReviews;
+    }
+  },
+
+  async addProductReview(reviewData) {
+    const client = getSupabaseClient();
+    const payload = {
+      id: reviewData.id || undefined,
+      product_id: reviewData.product_id,
+      reviewer_name: reviewData.reviewer_name || 'Customer',
+      rating: Number(reviewData.rating) || 5,
+      comment: reviewData.comment || '',
+      created_at: reviewData.created_at || new Date().toISOString()
+    };
+
+    if (!client) return payload;
+
+    try {
+      const { data, error } = await client
+        .from('product_reviews')
+        .insert([payload])
+        .select();
+
+      if (error) console.error('Error saving review to Supabase:', error);
+      return data ? data[0] : payload;
+    } catch (err) {
+      console.error('Supabase review insert error:', err);
+      return payload;
+    }
+  },
+
+  // ----------------------------------------------------
+  // 5. ORDERS & PAYMENT STATUS MANAGEMENT
   // ----------------------------------------------------
   async createOrder(orderData) {
     const client = getSupabaseClient();
@@ -441,7 +483,7 @@ export const supabaseService = {
   },
 
   // ----------------------------------------------------
-  // 5. WEBSITE STORE SETTINGS
+  // 6. WEBSITE STORE SETTINGS
   // ----------------------------------------------------
   async getStoreSettings(fallbackSettings) {
     const client = getSupabaseClient();

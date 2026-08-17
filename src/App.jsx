@@ -7,6 +7,7 @@ import CartDrawer from './components/CartDrawer';
 import AdminPortalPage from './components/AdminPortalPage';
 import CustomerAuthModal from './components/CustomerAuthModal';
 import CustomerProfilePage from './components/CustomerProfilePage';
+import ProductDetailModal from './components/ProductDetailModal';
 import Footer from './components/Footer';
 
 import { INITIAL_PRODUCTS, CATEGORIES as DEFAULT_CATEGORIES } from './data/mockData';
@@ -42,6 +43,7 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeView, setActiveView] = useState('catalog');
@@ -90,7 +92,6 @@ export default function App() {
 
   // Initial data loading from Supabase & Auth subscription
   useEffect(() => {
-    // Check Current User Auth
     supabaseService.getCurrentUser().then((u) => {
       if (u) setCurrentUser(u);
     });
@@ -236,7 +237,7 @@ export default function App() {
     supabaseService.deleteCategory(catId);
   };
 
-  // Product Handlers (saves to local state, localStorage AND Supabase)
+  // Product Handlers
   const handleAddProduct = async (newProd) => {
     setProducts((prev) => {
       const updated = [newProd, ...prev];
@@ -354,6 +355,7 @@ export default function App() {
             activeCategory={activeCategory}
             searchQuery={searchQuery}
             onAddToCart={(prod) => handleAddToCart(prod, 1)}
+            onSelectProduct={(prod) => setSelectedProduct(prod)}
           />
         </div>
       </main>
@@ -380,6 +382,15 @@ export default function App() {
           setCurrentUser(user);
           navigateTo('/profile');
         }}
+      />
+
+      {/* Product Details & Public Reviews Modal */}
+      <ProductDetailModal
+        product={selectedProduct}
+        isOpen={Boolean(selectedProduct)}
+        onClose={() => setSelectedProduct(null)}
+        onAddToCart={handleAddToCart}
+        currentUser={currentUser}
       />
     </div>
   );

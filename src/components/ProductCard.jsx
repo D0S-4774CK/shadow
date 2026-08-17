@@ -1,99 +1,66 @@
-import React, { useState } from 'react';
-import { ShoppingCart, Image as ImageIcon } from 'lucide-react';
+import React from 'react';
+import { ShoppingBag, Eye } from 'lucide-react';
 
-export default function ProductCard({ product, onAddToCart }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
-
-  const displayPrice = product.formattedPrice || `₹${product.price}`;
-
+export default function ProductCard({ product, onAddToCart, onSelectProduct }) {
   return (
-    <div className="product-card">
-      {/* Top Image Holder featuring real product photos */}
+    <div className="product-card card-neo">
+      {/* Product Image Container */}
       <div
-        className="card-image-box"
-        style={{
-          backgroundColor: '#F3EFE6',
-          position: 'relative',
-          height: '200px',
-          overflow: 'hidden'
-        }}
+        className="product-image-container"
+        onClick={() => onSelectProduct && onSelectProduct(product)}
+        style={{ cursor: 'pointer' }}
       >
-        {/* Badge Overlay */}
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          className="product-image"
+        />
+
+        {/* Badge Tag */}
         {product.badge && (
-          <span
-            className="badge-neo"
-            style={{
-              position: 'absolute',
-              top: '10px',
-              left: '10px',
-              backgroundColor: '#FFFFFF',
-              zIndex: 3
-            }}
-          >
+          <span className="product-badge badge-neo">
             {product.badge}
           </span>
         )}
 
-        {/* Real Product Photography */}
-        {!imageError && product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transition: 'transform 0.3s ease',
-              opacity: imageLoaded ? 1 : 0.4
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              color: '#888'
-            }}
-          >
-            <ImageIcon size={36} />
-            <span style={{ fontSize: '0.8rem', marginTop: '4px' }}>Laser Wood Craft</span>
-          </div>
-        )}
+        {/* Quick View Hover Icon */}
+        <div className="product-quick-view-overlay">
+          <button className="btn-neo" style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#FFFFFF' }}>
+            <Eye size={14} />
+            <span>Quick View & Reviews</span>
+          </button>
+        </div>
       </div>
 
-      {/* Card Content Details */}
-      <div className="card-content">
-        <div style={{ fontSize: '0.78rem', color: '#666', fontWeight: '600', marginBottom: '4px' }}>
-          {product.categoryLabel}
-        </div>
+      {/* Product Info Content */}
+      <div className="product-card-body">
+        {/* Category Label */}
+        <span className="product-category-label">
+          {product.categoryLabel || product.category}
+        </span>
 
-        <h3 className="card-title" title={product.name} style={{ fontSize: '1.05rem', fontWeight: '700' }}>
+        {/* Product Title */}
+        <h3
+          className="product-title"
+          onClick={() => onSelectProduct && onSelectProduct(product)}
+          style={{ cursor: 'pointer' }}
+        >
           {product.name}
         </h3>
 
-        <div className="card-meta" style={{ marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span className="card-price" style={{ fontSize: '1.3rem', fontWeight: '800' }}>
-              {displayPrice}
-            </span>
+        {/* Bottom Price & Add to Cart Row */}
+        <div className="product-card-footer">
+          <div className="product-price-tag">
+            {product.formattedPrice || `₹${product.price}`}
           </div>
-        </div>
 
-        {/* Action Button: Direct Add to Cart */}
-        <div className="card-actions">
           <button
-            className="btn-neo btn-neo-pink"
-            style={{ width: '100%', fontSize: '0.9rem', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            className="btn-neo btn-neo-pink add-to-cart-btn"
             onClick={() => onAddToCart(product)}
+            title="Add product to shopping cart"
           >
-            <ShoppingCart size={16} />
-            <span>Add to Cart</span>
+            <ShoppingBag size={16} />
+            <span>Add</span>
           </button>
         </div>
       </div>
